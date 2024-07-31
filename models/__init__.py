@@ -1,1 +1,3 @@
-from .Encoder_VAE import CNN_VAE
+from .act_model import ACTModel
+
+__all__ = ["ACTModel"]

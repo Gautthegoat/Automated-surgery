@@ -9,7 +9,7 @@ class Config:
     data_dir = "data/collected_demonstrations"
     num_demonstrations = 50
     demonstration_length = 500  # number of timesteps per demonstration
-    image_size = (480, 640)  # (height, width)
+    image_size = (int(1080/3), int(1920/3))  # (height, width)
     
     # Model architecture
     num_joints = 12
@@ -21,7 +21,7 @@ class Config:
     pretrained = True
     
     # Transformer settings
-    embed_dim = 512
+    embed_dim = 512  # Has to stay 512 since we're using a pre-trained ResNet
     num_encoder_layers = 4
     num_decoder_layers = 7
     num_heads = 8
@@ -33,7 +33,7 @@ class Config:
     beta = 10  # weight for KL divergence loss
     
     # Training settings
-    batch_size = 8
+    batch_size = 128
     num_epochs = 100
     learning_rate = 1e-5
     weight_decay = 1e-4

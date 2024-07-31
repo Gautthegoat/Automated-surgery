@@ -1,0 +1,30 @@
+# ACT: Action Chunking with Transformers for Robotic Manipulation
+
+This project implements the ACT (Action Chunking with Transformers) model for fine-grained bimanual robotic manipulation, based on the paper "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware" by Tony Z. Zhao et al.
+
+## Project Overview
+
+This implementation focuses on learning robotic manipulation tasks from demonstration data. It uses a transformer-based architecture to predict sequences of robot actions based on visual input, current joint positions, and a learned style variable.
+
+## Model Architecture
+
+The model consists of several key components:
+- ResNet18 for image feature extraction
+- A transformer encoder for processing combined image and state information
+- A transformer decoder for generating action sequences
+- A style encoder for capturing demonstration variations
+
+# Expected folder for training
+
+data_folder/
+    Frames/
+        video.mp4
+    Logs/
+        logs.db3
+    Extracted_data
+        extracted_logs.csv
+        frame_1.png
+        ...
+
+## Results
+

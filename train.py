@@ -9,7 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 
 from models.act_model import ACTModel, loss_function
-from utils.config import config
+from utils.config import Config as config
 from data.dataset import SurgicalRobotDataset
 
 def train():
@@ -62,6 +62,7 @@ def train():
 
         train_loss /= len(train_loader)
         epoch_time = time.time() - start_time
+        print(f"Epoch {epoch+1}/{config.num_epochs}, Loss: {train_loss:.4f}, Time: {epoch_time:.2f}s")  
 
         # Validation
         model.eval()
