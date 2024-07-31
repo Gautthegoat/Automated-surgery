@@ -21,10 +21,9 @@ data_folder/
         video.mp4
     Logs/
         logs.db3
-    Extracted_data
+    Extracted_data/
         extracted_logs.csv
         frame_1.png
         ...
 
 ## Results
-

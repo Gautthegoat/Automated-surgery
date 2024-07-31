@@ -1,0 +1,2 @@
+cmon who needs this file ?
+Just take the recent version of pytorch and torchvision and you should be fine. Else you got ChatGPT no ?
