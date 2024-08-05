@@ -1,66 +1,76 @@
 import torch
 
 class Config:
-    # General settings
-    seed = 42
-    device = torch.device("cuda:2")
-    
-    # Data settings
-    data_dir = "data/collected_demonstrations"
-    num_demonstrations = 50
-    demonstration_length = 500  # number of timesteps per demonstration
-    image_size = (int(1080/3), int(1920/3))  # (height, width)
-    
-    # Model architecture
-    num_joints = 12
-    action_dim = 12  # assuming each action specifies target positions for all 6 joints
-    chunk_size = 100  # number of timesteps to predict at once
-    
-    # ResNet settings
-    resnet_type = 18  # options: 18, 34, 50
-    pretrained = True
-    
-    # Transformer settings
-    embed_dim = 512  # Has to stay 512 since we're using a pre-trained ResNet
-    num_encoder_layers = 4
-    num_decoder_layers = 7
-    num_heads = 8
-    feedforward_dim = 3200
-    dropout = 0.1
-    
-    # CVAE settings
-    latent_dim = 32
-    beta = 10  # weight for KL divergence loss
-    
-    # Training settings
-    batch_size = 128
-    num_epochs = 100
-    learning_rate = 1e-5
-    weight_decay = 1e-4
-    clip_grad_norm = 1.0
-    
-    # Scheduler settings
-    use_scheduler = True
-    scheduler_step_size = 30
-    scheduler_gamma = 0.1
-    
-    # Evaluation settings
-    eval_frequency = 5  # evaluate every N epochs
-    num_eval_episodes = 25
-    
-    # Logging and checkpoints
-    log_dir = "logs"
-    checkpoint_dir = "checkpoints"
-    save_frequency = 10  # save model every N epochs
-    
-    # Data augmentation
-    use_data_augmentation = True
-    random_crop = True
-    random_flip = True
-    color_jitter = True
-    
-    # Temporal ensembling
-    use_temporal_ensemble = True
-    ensemble_weight = 0.5  # weight for exponential moving average
+    def __init__(self):
+        # General settings
+        self.name = "ACT_b8_meanstd"
+        self.device = torch.device("cuda:0")
+        self.type_predictions = "Absolute_joints"  # options: Absolute_joints, Delta_joints
+        
+        # Data settings
+        self.data_dir = "/data/gb/automated_surgery_dataset/"
+        self.image_size = (int(1080/3), int(1920/3))  # (height, width)
+        self.num_workers = 8
+        self.type_norm = "meanstd"  # options: minmax, meanstd, cos_sin or Nonr
+        self.stats = []  # This list will store the normalization stats of the data (this is just so we save the values to be able to use the model for inference)
+        
+        # Model architecture
+        self.num_joints = 12 # 12 if you want to use raw values
+        self.action_dim = 12  # assuming each action specifies target positions for all 6 joints
+        self.chunk_size = 100  # number of timesteps to predict at once
+        
+        # ResNet settings
+        self.resnet_type = 18  # options: 18, 34, 50
+        self.pretrained = True
+        
+        # Transformer settings
+        self.embed_dim = 512  # Has to stay 512 since we're using a pre-trained ResNet
+        self.num_encoder_layers = 4
+        self.num_decoder_layers = 7
+        self.num_heads = 8
+        self.feedforward_dim = 3200
+        self.dropout = 0.1
+        
+        # CVAE settings
+        self.latent_dim = 32
+        self.beta = 10  # weight for KL divergence loss
+        
+        # Training settings
+        self.batch_size = 8
+        self.num_epochs = 100
+        self.learning_rate = 1e-5
+        self.weight_decay = 1e-4
+        self.use_clip_grad_norm = False
+        self.clip_grad_norm = 1.0
+        
+        # Scheduler settings
+        self.use_scheduler = True
+        self.scheduler_step_size = 30
+        self.scheduler_gamma = 0.1
+        
+        # Logging and checkpoints
+        self.log_dir = f"Archive/logs/{self.name}"
+        self.checkpoint_dir = f"Archive/checkpoints/{self.name}"
+        self.save_frequency = 10  # save model every N epochs
+            
+    def to_dict(self):
+        return {key: self._format_value(value) for key, value in vars(self).items() if not key.startswith('__')}
 
-config = Config()
+    def _format_value(self, value):
+        if isinstance(value, torch.device):
+            return str(value)
+        elif isinstance(value, tuple):
+            return list(value)
+        else:
+            return value
+        
+    @classmethod
+    def from_dict(cls, config_dict):
+        config = cls()
+        for key, value in config_dict.items():
+            setattr(config, key, value)
+        return config
+
+if __name__ == "__main__":
+    config = Config()
+    print(config.to_dict())

@@ -2,14 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet18, ResNet18_Weights
-from utils import Config as config
-import math
 
-# TODO Put batch first to the transformers -> (batch_size, seq_len, embed_dim) -> Faster
 class ACTModel(nn.Module):
-    def __init__(self):
+    def __init__(self, config):
         super(ACTModel, self).__init__()
-        
+
+        self.config = config
         # Image encoder (ResNet)
         if config.pretrained:
             resnetweights = ResNet18_Weights.IMAGENET1K_V1
@@ -32,7 +30,7 @@ class ACTModel(nn.Module):
         self.query_embed = nn.Embedding(config.chunk_size, config.embed_dim)  # (chunk_size, embed_dim)
         
         # Style encoder
-        self.style_encoder = StyleEncoder(config.num_joints, config.embed_dim, config.latent_dim)
+        self.style_encoder = StyleEncoder(config.num_joints, config.embed_dim, config.latent_dim, config)
         
         # Main transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
@@ -65,21 +63,20 @@ class ACTModel(nn.Module):
         
     def forward(self, image, current_joints, future_joints=None, training=False):
         """
-        current_joints: (batch_size, num_joints)
+        current_joints: (batch_size, 1, num_joints)
         future_joints: (batch_size, chunk_size, num_joints)
         """
-        # Process image
         img_features = self.resnet(image)  # (batch_size, embed_dim, H/32, W/32)
         img_features = img_features.flatten(2).transpose(1, 2)  # (batch_size, H*W/32^2, embed_dim)
         
         # Process current joints
-        current_joint_features = self.joint_proj(current_joints).unsqueeze(1)  # (batch_size, 1, embed_dim)
+        current_joint_features = self.joint_proj(current_joints)  # (batch_size, 1, embed_dim)
         
         # Generate style variable z
         if training:
             z, mu, logvar = self.style_encoder(current_joints, future_joints)  # z: (batch_size, latent_dim)
         else:
-            z = torch.zeros(image.size(0), config.latent_dim).to(image.device)  # (batch_size, latent_dim)
+            z = torch.zeros(image.size(0), self.config.latent_dim).to(image.device)  # (batch_size, latent_dim)
             mu, logvar = None, None
         
         z_projected = self.z_proj(z).unsqueeze(1)  # (batch_size, 1, embed_dim)
@@ -99,14 +96,14 @@ class ACTModel(nn.Module):
 
         # Transformer decoder
         output = self.transformer_decoder(tgt, memory)  # (batch_size, chunk_size, embed_dim)
-
+        
         # Generate action sequence
         action_sequence = self.output_layer(output)  # (batch_size, chunk_size, action_dim)
 
         return action_sequence, mu, logvar  # (batch_size, chunk_size, action_dim), (batch_size, latent_dim), (batch_size, latent_dim)
     
 class StyleEncoder(nn.Module):
-    def __init__(self, joint_dim, embed_dim, latent_dim):
+    def __init__(self, joint_dim, embed_dim, latent_dim, config):
         super(StyleEncoder, self).__init__()
 
         # Project joints to embedding space
@@ -146,7 +143,7 @@ class StyleEncoder(nn.Module):
         
     def forward(self, current_joints, future_joints):
         # Project joints to embedding space
-        current_embed = self.joint_proj(current_joints).unsqueeze(1)  # (batch_size, 1, embed_dim)
+        current_embed = self.joint_proj(current_joints)  # (batch_size, 1, embed_dim)
         future_embed = self.joint_proj(future_joints)  # (batch_size, chunk_size, embed_dim)
         
         # Create CLS token
@@ -174,7 +171,7 @@ class StyleEncoder(nn.Module):
         
         return z, mu, logvar
 
-def loss_function(pred_actions, true_actions, mu, logvar):
-    reconstruction_loss = F.mse_loss(pred_actions, true_actions, reduction='sum')
-    kl_divergence = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+def loss_function(pred_actions, true_actions, mu, logvar, config):
+    reconstruction_loss = F.l1_loss(pred_actions[0, 0, :], true_actions[0, 0, :])
+    kl_divergence = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
     return reconstruction_loss + config.beta * kl_divergence

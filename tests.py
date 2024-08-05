@@ -1,45 +1,35 @@
+from utils.transform import Transform
+from utils.config import Config as config
+from data.dataset import SurgicalRobotDataset
 import torch
-from models import ACTModel
-from utils import Config as config
-import time
+from torchvision.utils import save_image
 
-def test_act_model():
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    
-    model = ACTModel().to(device)
-    model.eval()
+# dataset = SurgicalRobotDataset(config(), Transform, start_crop=210, end_crop=900)
+# dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True)
 
-    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"Number of trainable parameters: {num_params/1e6:.2f}M")
+import numpy as np
 
-    batch_size = 1
-    image = torch.randn(batch_size, 3, int(1080/3), int(1920/3)).to(device)
-    current_joints = torch.randn(batch_size, config.num_joints).to(device)
-    future_joints = torch.randn(batch_size, config.chunk_size, config.num_joints).to(device)
+# Your original data
+data = [
+    [1, 2, 3, 4, 5],
+    [3, 2, 3, 4, 5],
+    [0, 2, 3, 4, 5],
+    [2, 2, 3, 4, 5]
+]
 
-    with torch.no_grad():
-        action_sequence, mu, logvar = model(image, current_joints, future_joints, training=True)
+# Convert to numpy array and transpose
+data_array = np.array(data)
 
-    expected_action_shape = (batch_size, config.chunk_size, config.action_dim)
-    expected_latent_shape = (batch_size, config.latent_dim)
+# Calculate mean and std for each position
+means = np.mean(data_array, axis=0)
+stds = np.std(data_array, axis=0)
 
-    print(f"")
-    print(f"{':]' if action_sequence.shape == expected_action_shape else 'X'} Training action_sequence shape: {'Passed' if action_sequence.shape == expected_action_shape else 'Failed'}. Expected {expected_action_shape}, got: {tuple(action_sequence.shape)}")
-    print(f"{':]' if mu.shape == expected_latent_shape else 'X'} Training mu shape: {'Passed' if mu.shape == expected_latent_shape else 'Failed'}. Expected {expected_latent_shape}, got: {tuple(mu.shape)}")
-    print(f"{':]' if logvar.shape == expected_latent_shape else 'X'} Training logvar shape: {'Passed' if logvar.shape == expected_latent_shape else 'Failed'}. Expected {expected_latent_shape}, got: {tuple(logvar.shape)}")
-    print(f"")
+# Normalize the data
+normalized_data = (data_array - means) / stds
 
-    start_time = time.time()
-    with torch.no_grad():
-        action_sequence, mu, logvar = model(image, current_joints, training=False)
-    print(f"Time taken for inference mode: {time.time() - start_time:.4f} seconds")
+# Convert back to list of lists if needed
+normalized_data_list = normalized_data.tolist()
 
-    print(f"{':]' if action_sequence.shape == expected_action_shape else 'X'} Inference action_sequence shape: {'Passed' if action_sequence.shape == expected_action_shape else 'Failed'}. Expected {expected_action_shape}, got: {tuple(action_sequence.shape)}")
-    print(f"{':]' if mu is None else 'X'} Inference mu is None: {'Passed' if mu is None else 'Failed'}. Expected None, got: {type(mu)}")
-    print(f"{':]' if logvar is None else 'X'} Inference logvar is None: {'Passed' if logvar is None else 'Failed'}. Expected None, got: {type(logvar)}")
-
-    print(f"")
-    print("All tests completed.")
-
-if __name__ == "__main__":
-    test_act_model()
+print("Normalized data:")
+for row in normalized_data_list:
+    print([f"{x:.2f}" for x in row])

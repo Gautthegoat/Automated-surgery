@@ -1,4 +1,4 @@
 from .config import Config
-from .transform import transform_image
+from .transform import Transform
 
-__all__ = ["Config", "transform_image"]
+__all__ = ["Config", "Transform"]
