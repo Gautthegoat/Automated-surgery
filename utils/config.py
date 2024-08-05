@@ -11,13 +11,14 @@ class Config:
         self.data_dir = "/data/gb/automated_surgery_dataset/"
         self.image_size = (int(1080/3), int(1920/3))  # (height, width)
         self.num_workers = 8
-        self.type_norm = "meanstd"  # options: minmax, meanstd, cos_sin or Nonr
+        self.type_norm = "meanstd"  # options: minmax, meanstd, cos_sin or None
         self.stats = []  # This list will store the normalization stats of the data (this is just so we save the values to be able to use the model for inference)
         
         # Model architecture
         self.num_joints = 12 # 12 if you want to use raw values
         self.action_dim = 12  # assuming each action specifies target positions for all 6 joints
         self.chunk_size = 100  # number of timesteps to predict at once / Here 30 fps -> 3.33s
+        self.take_current_actions = True  # If True, the model will take the current actions as input
         
         # ResNet settings
         self.resnet_type = 18  # options: 18, 34, 50
@@ -46,11 +47,6 @@ class Config:
         self.weight_decay = 1e-4
         self.use_clip_grad_norm = False
         self.clip_grad_norm = 1.0
-        
-        # Scheduler settings
-        self.use_scheduler = True
-        self.scheduler_step_size = 30
-        self.scheduler_gamma = 0.1
         
         # Logging and checkpoints
         self.log_dir = f"Archive/logs/{self.name}"

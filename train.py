@@ -41,6 +41,9 @@ def train():
             frame, logs = frame.to(device), logs.to(device)
             current_actions = logs[:, 0, :].unsqueeze(1) # (batch_size, 1, num_joints)
             future_actions = logs[:, 1:, :] # (batch_size, chunk_size, num_joints)
+            # Check if nan values are present
+            if torch.isnan(frame).any() or torch.isnan(current_actions).any() or torch.isnan(future_actions).any():
+                print("Nan values present in data. Skipping batch.")
 
             pred_actions, mu, logvar = model(frame, current_actions, future_actions, training=True)
             loss = loss_function(pred_actions, future_actions, mu, logvar, config)

@@ -22,7 +22,11 @@ class ACTModel(nn.Module):
         self.size_output_resnet = self.size_output_resnet.flatten(2).shape
 
         # Positional encoding for the encoder
-        self.encoder_input_embed = nn.Embedding(self.size_output_resnet[2]+2, config.embed_dim)  # (H*W/32^2+2, embed_dim)
+        if config.take_current_actions:
+            added_input_dim = 2  # Current actions and style variable
+        else:
+            added_input_dim = 1 # Style variable only
+        self.encoder_input_embed = nn.Embedding(self.size_output_resnet[2]+added_input_dim, config.embed_dim)  # (H*W/32^2+2, embed_dim)
         # Query position embedding for decoder
         self.query_embed = nn.Embedding(config.chunk_size, config.embed_dim)  # (chunk_size, embed_dim)
         
@@ -79,7 +83,10 @@ class ACTModel(nn.Module):
         z_projected = self.z_proj(z).unsqueeze(1)  # (batch_size, 1, embed_dim)
         
         # Combine features for transformer encoder
-        encoder_input = torch.cat([img_features, current_joint_features, z_projected], dim=1)  # (batch_size, H*W/32^2+2, embed_dim)
+        if self.config.take_current_actions:
+            encoder_input = torch.cat([img_features, current_joint_features, z_projected], dim=1)  # (batch_size, H*W/32^2+2, embed_dim)
+        else:
+            encoder_input = torch.cat([img_features, z_projected], dim=1) # (batch_size, H*W/32^2+1, embed_dim)
 
         # Add positional encoding
         encoder_positional_encoding = self.encoder_input_embed.weight.unsqueeze(0).repeat(image.size(0), 1, 1)  # (batch_size, H*W/32^2+2, embed_dim)
