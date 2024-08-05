@@ -79,7 +79,7 @@ class Process_Videos_Logs():
         self.video_path = os.path.join(data_path, 'videos')
         self.frames_path = os.path.join(data_path, 'frames')
         self.videos = [f for f in os.listdir(self.video_path) if f.endswith('.h264')]
-        # self.process_videos()
+        self.process_videos()
         self.add_logs(self.videos[0], verbose=True)
 
     def process_videos(self):

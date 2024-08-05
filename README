@@ -29,4 +29,6 @@ data_folder/
 ## Remarks
 
 In ACT paper, they used frozen batchNorm2D, keeping the spatial interpretation static, but they commented on the code that they should verify if good idea...
+Also, they have the option on not taking only features from the final output but also intermediate layers.
+
 In diffusion policy, they used a standard ResNet-18 (without pretraining) as the encoder with the following modifications: 1) Replace the global average pooling with a spatial softmax pooling to maintain spatial information Mandlekar et al. (2021). 2) Replace BatchNorm with GroupNorm Wu and He (2018) for stable training.

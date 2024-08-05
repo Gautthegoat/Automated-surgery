@@ -3,8 +3,8 @@ import torch
 class Config:
     def __init__(self):
         # General settings
-        self.name = "ACT_b8_meanstd"
-        self.device = torch.device("cuda:0")
+        self.name = "ACT_test"
+        self.device = torch.device("cuda:1")
         self.type_predictions = "Absolute_joints"  # options: Absolute_joints, Delta_joints
         
         # Data settings
@@ -17,11 +17,15 @@ class Config:
         # Model architecture
         self.num_joints = 12 # 12 if you want to use raw values
         self.action_dim = 12  # assuming each action specifies target positions for all 6 joints
-        self.chunk_size = 100  # number of timesteps to predict at once
+        self.chunk_size = 100  # number of timesteps to predict at once / Here 30 fps -> 3.33s
         
         # ResNet settings
         self.resnet_type = 18  # options: 18, 34, 50
         self.pretrained = True
+        self.type_Norm = "GroupNorm"  # options: BatchNorm2d, GroupNorm if GropNorm, the model won't use pretrained weights
+        self.freeze_BatchNorm = False  # only used if type_Norm is BatchNorm2d
+        self.num_GroupNorm = 32  # only used if type_Norm is GroupNorm
+        self.layers = [1, 2, 3, 4]  # Layers used as input for the transformer encoder (1-4) -> Not implemented yet
         
         # Transformer settings
         self.embed_dim = 512  # Has to stay 512 since we're using a pre-trained ResNet

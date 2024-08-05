@@ -2,20 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models._utils import IntermediateLayerGetter
+from torchvision.models.resnet import ResNet, BasicBlock
 
 class ACTModel(nn.Module):
     def __init__(self, config):
         super(ACTModel, self).__init__()
-
         self.config = config
-        # Image encoder (ResNet)
-        if config.pretrained:
-            resnetweights = ResNet18_Weights.IMAGENET1K_V1
-        else:
-            resnetweights = None
-        self.resnet = nn.Sequential(
-            *list(resnet18(weights=resnetweights).children())[:-2]
-        )
+
+        # ResNet
+        self.resnet = get_resnet(self.config, print_resnet=False)
+
         # Projection layers
         self.joint_proj = nn.Linear(config.num_joints, config.embed_dim)
         self.z_proj = nn.Linear(config.latent_dim, config.embed_dim)
@@ -170,6 +167,70 @@ class StyleEncoder(nn.Module):
         z = mu + eps * std
         
         return z, mu, logvar
+    
+class ResNetOutputAdapter(nn.Module):
+    def __init__(self, input_channels, target_channels):
+        super(ResNetOutputAdapter, self).__init__()
+        self.adapters = nn.ModuleDict()
+        for layer_name, channels in input_channels.items():
+            self.adapters[layer_name] = nn.Conv2d(channels, target_channels, kernel_size=1)
+        
+    def forward(self, x):
+        return {layer_name: self.adapters[layer_name](tensor) 
+                for layer_name, tensor in x.items()}
+    
+class FrozenBatchNorm2d(nn.Module):
+    def __init__(self, num_features):
+        super(FrozenBatchNorm2d, self).__init__()
+        self.register_buffer("weight", torch.ones(num_features))
+        self.register_buffer("bias", torch.zeros(num_features))
+        self.register_buffer("running_mean", torch.zeros(num_features))
+        self.register_buffer("running_var", torch.ones(num_features))
+    
+    def forward(self, x):
+        scale = self.weight * (self.running_var + 1e-5).rsqrt()
+        bias = self.bias - self.running_mean * scale
+        scale = scale.reshape(1, -1, 1, 1)
+        bias = bias.reshape(1, -1, 1, 1)
+        return x * scale + bias
+    
+def adapt_resnet_output(resnet_output, target_channels=512):
+    # Get the number of channels in the ResNet output for each layer
+    input_channels = {layer_name: tensor.shape[1] for layer_name, tensor in resnet_output.items()}
+
+    # Create the adapter
+    adapter = ResNetOutputAdapter(input_channels, target_channels)
+
+    # Apply the adapter to the ResNet output
+    adapted_output = adapter(resnet_output)
+    print(adapted_output)
+
+    return adapted_output
+    
+def get_resnet(config, print_resnet=False):
+    """
+    Obtain a ResNet18 model with the specified settings
+    """
+    # Modify normalization layers based on config
+    if config.type_Norm == "BatchNorm2d":
+        norm_layer = lambda x: FrozenBatchNorm2d(x) if config.freeze_BatchNorm else nn.BatchNorm2d(x)
+    elif config.type_Norm == "GroupNorm":
+        norm_layer = lambda x: nn.GroupNorm(config.num_GroupNorm, x)
+
+    resnet = ResNet(BasicBlock, [2, 2, 2, 2], norm_layer=norm_layer)
+
+    if config.pretrained and config.type_Norm == "BatchNorm2d":
+        state_dict = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1).state_dict()
+        resnet.load_state_dict(state_dict, strict=False)
+
+    resnet = nn.Sequential(
+        *list(resnet.children())[:-2] 
+    )
+
+    if print_resnet:
+        print(resnet)
+
+    return resnet
 
 def loss_function(pred_actions, true_actions, mu, logvar, config):
     reconstruction_loss = F.l1_loss(pred_actions[0, 0, :], true_actions[0, 0, :])
